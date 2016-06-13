@@ -1,7 +1,35 @@
 const isFunction = (target) => typeof target === 'function'
 const isObject = (target) => typeof target === 'object'
 
-const convertAndAttachNotNativeMethods = (original, target, originalSA, targetSA) => {
+const _traverse = (traverseTarget, originalSA, targetSA, options) => {
+  if (traverseTarget && originalSA.isValidStream(traverseTarget)){
+    return traverseAndConvertStream(traverseTarget, originalSA, targetSA, options)
+  }
+  if (isObject(traverseTarget)){
+    for (let key in traverseTarget) {
+      let traversed = _traverse(traverseTarget[key], originalSA, targetSA, options)
+      if (traversed && targetSA.isValidStream(traversed)){
+        traverseTarget[key] = traversed
+      }
+    }
+  }
+  return traverseTarget
+}
+
+const traverseAndConvertStream = (original, originalSA, targetSA, options) => {
+  let traversedOriginal = originalSA.adapt({}, (_, observer) => {
+    originalSA.streamSubscribe(original, {
+      next: (value) => {
+        observer.next(_traverse(value, originalSA, targetSA, options))
+      },
+      error: ::observer.error,
+      complete: ::observer.complete
+    })
+  })
+  return convertStream(traversedOriginal, originalSA, targetSA, options)
+}
+
+const convertAndAttachAdHocMethods = (original, target, originalSA, targetSA) => {
   let prototype = original.constructor.prototype
   Object.keys(original).forEach(key => {
     if (!prototype.hasOwnProperty(key)
@@ -14,29 +42,43 @@ const convertAndAttachNotNativeMethods = (original, target, originalSA, targetSA
   return target
 }
 
-export const convertStream = (original, originalSA, targetSA, convertMethods = false) => {
-  var target = targetSA.adapt(original, originalSA.streamSubscribe)
-  return convertMethods ? convertAndAttachNotNativeMethods(
+export const convertStream = (original, originalSA, targetSA, options = {}) => {
+  let target = targetSA.adapt(original, originalSA.streamSubscribe)
+  return options.convertMethods ? convertAndAttachAdHocMethods(
       original, target, originalSA, targetSA
   ) : target
 }
 
-export const convertObject = (obj, originalSA, targetSA, convertMethods) => {
+export const convertObject = (obj, originalSA, targetSA, options = {}) => {
   let converted = {}
   for (let key in obj) {
     let property = obj[key]
-      converted[key] = _convert(obj[key], originalSA, targetSA, convertMethods)
+    if (property && options.traverse
+      && options.traverse.indexOf(key) >= 0
+      && originalSA.isValidStream(property)
+    ){
+      converted[key] = traverseAndConvertStream(property, originalSA, targetSA, options)
+    } else {
+      converted[key] = _convert(property, originalSA, targetSA, options)
+    }
   }
   return converted
 }
 
-export const convertDataflow = (originalDataflow, originalSA, targetSA) => {
+export const convertDataflow = (originalDataflow, originalSA, targetSA, options = {}) => {
   return (...args) => {
     let originalArgs = args.map(arg =>
-      _convert(arg, targetSA, originalSA, true)
+      _convert(arg, targetSA, originalSA, {
+        convertMethods: true,
+        ...options,
+        traverse: options.traverseSources && options.traverse
+      })
     )
     let sinks = originalDataflow(...originalArgs)
-    return _convert(sinks, originalSA, targetSA)
+    if (options.traverse === true && sinks && originalSA.isValidStream(sinks)){
+      return traverseAndConvertStream(sinks, originalSA, targetSA, options)
+    }
+    return _convert(sinks, originalSA, targetSA, options)
   }
 }
 
@@ -54,14 +96,14 @@ const _convert = (...args) => {
   return original
 }
 
-export const convert = (original, originalSA, targetSA) => {
+export const convert = (original, originalSA, targetSA, options = {}) => {
   if (!originalSA || !isFunction(originalSA.adapt)){
     throw new Error(`You should pass original stream adapter as second argument`)
   }
   if (!targetSA || !isFunction(targetSA.adapt)){
     throw new Error(`You should pass target stream adapter as third argument`)
   }
-  return _convert(original, originalSA, targetSA)
+  return _convert(original, originalSA, targetSA, options)
 }
 
 export default convert

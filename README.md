@@ -16,11 +16,11 @@ for converting input and output streams in passed dataflow.
   ...
   
   const RxDataflow = convert(XsDataflow, xsAdapter, rxAdapter)    
-  // plug it in you cycle rx app!  
+  // plug it in your cycle Rx app!  
 ```
 
-It will (at least it should) properly convert all driver sources 
-with all their (custom) methods/helpers and stuff.
+It will (at least it should, see [cautions](#cautions)) properly convert 
+all driver sources with all their (custom) methods/helpers and stuff.
 
 You may also convert just streams:
 ```js    
@@ -35,6 +35,18 @@ from `rxjs` to `xstream` (or maybe **visa versa?**, don't tell @staltz)
 
 Or you may use some cyclic component created with one stream library 
 inside your other component created using another lib. It is simple.
+
+## Cautions
+
+`cycle-convert` supports traversal of streams - this means it can
+also convert nested streams *hide inside*. This may be needed for some driver
+sinks for example official `@cycle/DOM` driver with `transposition` option.
+To enable stream traversal use `traverse` option.
+
+```js
+const RxComponent = convert(XsComponent, xsAdapter, rxAdapter, {traverse: ['DOM']})
+// drop it to your cycle Rx app!
+```
 
 ## Install
 ```bash
