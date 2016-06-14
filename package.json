@@ -1,6 +1,6 @@
 {
   "name": "cycle-convert",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Utility for converting cycle.js dataflows between streams libs.",
   "author": "whitecolor",
   "license": "ISC",

@@ -1,5 +1,6 @@
 const isFunction = (target) => typeof target === 'function'
-const isObject = (target) => typeof target === 'object'
+const isObject = (target) => typeof target === 'object' && !Array.isArray(target)
+const isPlainObject = (target) => target && target.constructor === Object
 
 const _traverse = (traverseTarget, originalSA, targetSA, options) => {
   if (traverseTarget && originalSA.isValidStream(traverseTarget)){
@@ -53,11 +54,15 @@ export const convertObject = (obj, originalSA, targetSA, options = {}) => {
   let converted = {}
   for (let key in obj) {
     let property = obj[key]
-    if (property && options.traverse
+    if (key[0] === '_') { // do not convert private
+      converted[key] = property
+    } else if (property && options.traverse
       && options.traverse.indexOf(key) >= 0
       && originalSA.isValidStream(property)
     ){
       converted[key] = traverseAndConvertStream(property, originalSA, targetSA, options)
+    } else if (isFunction(property)) {
+      converted[key] = convertDataflow(property.bind(converted), originalSA, targetSA, options)
     } else {
       converted[key] = _convert(property, originalSA, targetSA, options)
     }
@@ -84,7 +89,7 @@ export const convertDataflow = (originalDataflow, originalSA, targetSA, options 
 
 const _convert = (...args) => {
   let [original, originalSA] = args
-  if (isFunction(original)){
+  if (isFunction(original)) {
     return convertDataflow(...args)
   }
   if (original && originalSA.isValidStream(original)){
@@ -97,10 +102,10 @@ const _convert = (...args) => {
 }
 
 export const convert = (original, originalSA, targetSA, options = {}) => {
-  if (!originalSA || !isFunction(originalSA.adapt)){
+  if (!originalSA || !isFunction(originalSA.adapt)) {
     throw new Error(`You should pass original stream adapter as second argument`)
   }
-  if (!targetSA || !isFunction(targetSA.adapt)){
+  if (!targetSA || !isFunction(targetSA.adapt)) {
     throw new Error(`You should pass target stream adapter as third argument`)
   }
   return _convert(original, originalSA, targetSA, options)
