@@ -27,7 +27,7 @@ export const traverseAndConvertStream = (original, originalSA, targetSA, options
       complete: ::observer.complete
     })
   })
-  return convertStream(traversedOriginal, originalSA, targetSA, options)
+  return convertStream(traversedOriginal, originalSA, targetSA, {...options, traverse: false})
 }
 
 export const convertAndAttachAdHocMethods = (original, target, originalSA, targetSA) => {
@@ -44,6 +44,9 @@ export const convertAndAttachAdHocMethods = (original, target, originalSA, targe
 }
 
 export const convertStream = (original, originalSA, targetSA, options = {}) => {
+  if (options.traverse === true){
+    return traverseAndConvertStream(original, originalSA, targetSA, options)
+  }
   let target = targetSA.adapt(original, originalSA.streamSubscribe)
   return options.convertMethods ? convertAndAttachAdHocMethods(
       original, target, originalSA, targetSA
@@ -76,14 +79,17 @@ export const convertDataflow = (originalDataflow, originalSA, targetSA, options 
       _convert(arg, targetSA, originalSA, {
         convertMethods: true,
         ...options,
-        traverse: options.traverseSources && options.traverse
+        traverse: options.traverse || options.traverseSource
       })
     )
     let sinks = originalDataflow(...originalArgs)
     if (options.traverse === true && sinks && originalSA.isValidStream(sinks)){
       return traverseAndConvertStream(sinks, originalSA, targetSA, options)
     }
-    return _convert(sinks, originalSA, targetSA, options)
+    return _convert(sinks, originalSA, targetSA, {
+      ...options,
+      traverse: options.traverse || options.traverseSink
+    })
   }
 }
 

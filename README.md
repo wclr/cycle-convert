@@ -44,7 +44,7 @@ sinks for example official `@cycle/DOM` driver with `transposition` option.
 To enable stream traversal use `traverse` option.
 
 ```js
-const RxComponent = convert(XsComponent, xsAdapter, rxAdapter, {traverse: ['DOM']})
+const RxComponent = convert(XsComponent, xsAdapter, rxAdapter, {traverseSink: ['DOM']})
 // drop it to your cycle Rx app!
 ```
 

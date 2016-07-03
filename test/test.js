@@ -77,3 +77,25 @@ test('Convert simple dataflow', (t) => {
     t.end()
   })
 })
+
+test('Convert simple dataflow and traverse source', (t) => {
+  let xsDataflow = (input$) => input$.map(_ => _.nested.b.mapTo('A'))
+
+  let rxDataflow = convert(xsDataflow, xsAdapter, rxAdapter, {
+    traverseSource: true,
+    traverseSink: true
+  })
+
+  var source$ = O.of({
+    nested: {
+      b: O.of('B')
+    }
+  })
+
+  let sinks = rxDataflow(source$)
+
+  sinks.flatMap(_ => _).subscribe((x) => {
+    t.is(x, 'A', 'DOM nested stream `b` is ok')
+    t.end()
+  })
+})
