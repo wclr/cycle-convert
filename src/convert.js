@@ -17,7 +17,7 @@ const _traverse = (traverseTarget, originalSA, targetSA, options) => {
   return traverseTarget
 }
 
-const traverseAndConvertStream = (original, originalSA, targetSA, options) => {
+export const traverseAndConvertStream = (original, originalSA, targetSA, options) => {
   let traversedOriginal = originalSA.adapt({}, (_, observer) => {
     originalSA.streamSubscribe(original, {
       next: (value) => {
@@ -30,7 +30,7 @@ const traverseAndConvertStream = (original, originalSA, targetSA, options) => {
   return convertStream(traversedOriginal, originalSA, targetSA, options)
 }
 
-const convertAndAttachAdHocMethods = (original, target, originalSA, targetSA) => {
+export const convertAndAttachAdHocMethods = (original, target, originalSA, targetSA) => {
   let prototype = original.constructor.prototype
   Object.keys(original).forEach(key => {
     if (!prototype.hasOwnProperty(key)
